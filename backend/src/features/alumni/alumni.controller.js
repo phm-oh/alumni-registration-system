@@ -1,82 +1,19 @@
-// Alumni controller 
 // src/features/alumni/alumni.controller.js
-import Alumni from './alumni.model.js';
-import { 
-  sendRegistrationEmail, 
-  sendAdminNotificationEmail, 
-  sendStatusUpdateEmail 
-} from '../../utils/email.js';
-import { uploadToCloudinary } from '../../utils/upload.js';
+import {
+  createAlumniRegistration,
+  uploadPaymentProof,
+  checkRegistrationStatus,
+  updateAlumniStatus,
+  getAllAlumni,
+  getAlumniById,
+  getRegistrationStatistics
+} from './alumni.service.js';
 
 // ลงทะเบียนศิษย์เก่าใหม่
 export const registerAlumni = async (req, res) => {
   try {
-    const {
-      firstName,
-      lastName,
-      idCard,
-      address,
-      graduationYear,
-      department,
-      phone,
-      email,
-      currentJob,
-      workplace,
-      facebookId,
-      lineId,
-      paymentMethod,
-      deliveryOption,
-      pdpaConsent
-    } = req.body;
-
-    // ตรวจสอบว่ามีศิษย์เก่าลงทะเบียนด้วย idCard นี้แล้วหรือไม่
-    const existingAlumni = await Alumni.findOne({ idCard });
-    if (existingAlumni) {
-      return res.status(400).json({
-        success: false,
-        message: 'เลขบัตรประชาชนนี้ได้ลงทะเบียนแล้ว'
-      });
-    }
-    
-    // สร้างข้อมูลศิษย์เก่าใหม่
-    const newAlumni = new Alumni({
-      firstName,
-      lastName,
-      idCard,
-      address,
-      graduationYear,
-      department,
-      phone,
-      email,
-      currentJob,
-      workplace,
-      facebookId,
-      lineId,
-      paymentMethod,
-      deliveryOption,
-      pdpaConsent,
-      status: paymentMethod === 'ชำระด้วยตนเอง' ? 'รอการชำระเงิน' : 'รอตรวจสอบ'
-    });
-    
-    // กำหนดค่าจัดส่งและยอดรวม
-    if (deliveryOption === 'จัดส่งทางไปรษณีย์') {
-      newAlumni.shippingFee = 30;
-      newAlumni.totalAmount = 230;
-    }
-
-    // ถ้ามีการอัปโหลดไฟล์หลักฐานการชำระเงิน
-    if (req.file) {
-      const result = await uploadToCloudinary(req.file);
-      newAlumni.paymentProofUrl = result.secure_url;
-      newAlumni.paymentDate = new Date();
-    }
-
-    // บันทึกข้อมูล
-    await newAlumni.save();
-    
-    // ส่งอีเมลแจ้งเตือน
-    await sendRegistrationEmail(newAlumni);
-    await sendAdminNotificationEmail(newAlumni);
+    // ใช้ service เพื่อสร้างการลงทะเบียน
+    const newAlumni = await createAlumniRegistration(req.body, req.file);
 
     return res.status(201).json({
       success: true,
@@ -85,113 +22,93 @@ export const registerAlumni = async (req, res) => {
     });
   } catch (error) {
     console.error('Error in registerAlumni:', error);
-    return res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: 'เกิดข้อผิดพลาดในการลงทะเบียน',
-      error: error.message
+      message: error.message || 'เกิดข้อผิดพลาดในการลงทะเบียน'
     });
   }
 };
 
 // ตรวจสอบสถานะการลงทะเบียน
-export const checkRegistrationStatus = async (req, res) => {
+export const checkRegistrationStatusController = async (req, res) => {
   try {
     const { idCard } = req.body;
     
-    const alumni = await Alumni.findOne({ idCard });
-    if (!alumni) {
-      return res.status(404).json({
-        success: false,
-        message: 'ไม่พบข้อมูลการลงทะเบียน กรุณาตรวจสอบเลขบัตรประชาชนอีกครั้ง'
-      });
-    }
+    // ใช้ service เพื่อตรวจสอบสถานะ
+    const statusData = await checkRegistrationStatus(idCard);
     
     return res.status(200).json({
       success: true,
       message: 'ตรวจสอบสถานะสำเร็จ',
-      data: {
-        fullName: `${alumni.firstName} ${alumni.lastName}`,
-        status: alumni.status,
-        registrationDate: alumni.registrationDate,
-        paymentMethod: alumni.paymentMethod,
-        deliveryOption: alumni.deliveryOption,
-        totalAmount: alumni.totalAmount
-      }
+      data: statusData
     });
   } catch (error) {
     console.error('Error in checkRegistrationStatus:', error);
-    return res.status(500).json({
+    return res.status(error.message.includes('ไม่พบข้อมูล') ? 404 : 500).json({
       success: false,
-      message: 'เกิดข้อผิดพลาดในการตรวจสอบสถานะ',
-      error: error.message
+      message: error.message || 'เกิดข้อผิดพลาดในการตรวจสอบสถานะ'
     });
   }
 };
 
 // อัปโหลดหลักฐานการชำระเงิน
-export const uploadPaymentProof = async (req, res) => {
+export const uploadPaymentProofController = async (req, res) => {
   try {
-    const { idCard } = req.body;
+    const { idCard, paymentDetails } = req.body;
     
-    // ตรวจสอบว่ามีข้อมูลศิษย์เก่าหรือไม่
-    const alumni = await Alumni.findOne({ idCard });
-    if (!alumni) {
-      return res.status(404).json({
-        success: false,
-        message: 'ไม่พบข้อมูลการลงทะเบียน'
-      });
-    }
-    
-    // ตรวจสอบว่ามีไฟล์หรือไม่
-    if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: 'กรุณาอัปโหลดหลักฐานการชำระเงิน'
-      });
-    }
-    
-    // อัปโหลดไฟล์ไปยัง Cloudinary
-    const result = await uploadToCloudinary(req.file);
-    
-    // อัปเดตข้อมูลศิษย์เก่า
-    alumni.paymentProofUrl = result.secure_url;
-    alumni.paymentDate = new Date();
-    alumni.paymentDetails = req.body.paymentDetails || '';
-    alumni.status = 'รอตรวจสอบ';
-    
-    await alumni.save();
-    
-    // ส่งอีเมลแจ้งเตือน Admin
-    await sendAdminNotificationEmail(alumni);
+    // ใช้ service เพื่ออัปโหลดหลักฐานการชำระเงิน
+    const alumni = await uploadPaymentProof(idCard, req.file, paymentDetails);
     
     return res.status(200).json({
       success: true,
       message: 'อัปโหลดหลักฐานการชำระเงินสำเร็จ',
       data: {
-        paymentProofUrl: result.secure_url,
+        paymentProofUrl: alumni.paymentProofUrl,
         paymentDate: alumni.paymentDate,
         status: alumni.status
       }
     });
   } catch (error) {
     console.error('Error in uploadPaymentProof:', error);
-    return res.status(500).json({
+    const statusCode = 
+      error.message.includes('ไม่พบข้อมูล') ? 404 : 
+      error.message.includes('กรุณาอัปโหลด') ? 400 : 500;
+    
+    return res.status(statusCode).json({
       success: false,
-      message: 'เกิดข้อผิดพลาดในการอัปโหลดหลักฐานการชำระเงิน',
-      error: error.message
+      message: error.message || 'เกิดข้อผิดพลาดในการอัปโหลดหลักฐานการชำระเงิน'
     });
   }
 };
 
 // ดึงข้อมูลศิษย์เก่าทั้งหมด (สำหรับ Admin)
-export const getAllAlumni = async (req, res) => {
+export const getAllAlumniController = async (req, res) => {
   try {
-    const alumni = await Alumni.find().sort({ createdAt: -1 });
+    const { 
+      status, graduationYear, department, name, idCard,
+      page, limit, sort 
+    } = req.query;
+    
+    // สร้าง filters และ options
+    const filters = {};
+    if (status) filters.status = status;
+    if (graduationYear) filters.graduationYear = parseInt(graduationYear);
+    if (department) filters.department = department;
+    if (name) filters.name = name;
+    if (idCard) filters.idCard = idCard;
+    
+    const options = {
+      page: page ? parseInt(page) : 1,
+      limit: limit ? parseInt(limit) : 10,
+      sort: sort ? JSON.parse(sort) : { createdAt: -1 }
+    };
+    
+    // ใช้ service เพื่อดึงข้อมูล
+    const results = await getAllAlumni(filters, options);
     
     return res.status(200).json({
       success: true,
-      count: alumni.length,
-      data: alumni
+      ...results
     });
   } catch (error) {
     console.error('Error in getAllAlumni:', error);
@@ -204,16 +121,12 @@ export const getAllAlumni = async (req, res) => {
 };
 
 // ดึงข้อมูลศิษย์เก่าตาม ID
-export const getAlumniById = async (req, res) => {
+export const getAlumniByIdController = async (req, res) => {
   try {
-    const alumni = await Alumni.findById(req.params.id);
+    const { id } = req.params;
     
-    if (!alumni) {
-      return res.status(404).json({
-        success: false,
-        message: 'ไม่พบข้อมูลศิษย์เก่า'
-      });
-    }
+    // ใช้ service เพื่อดึงข้อมูล
+    const alumni = await getAlumniById(id);
     
     return res.status(200).json({
       success: true,
@@ -221,33 +134,21 @@ export const getAlumniById = async (req, res) => {
     });
   } catch (error) {
     console.error('Error in getAlumniById:', error);
-    return res.status(500).json({
+    return res.status(error.message.includes('ไม่พบข้อมูล') ? 404 : 500).json({
       success: false,
-      message: 'เกิดข้อผิดพลาดในการดึงข้อมูลศิษย์เก่า',
-      error: error.message
+      message: error.message || 'เกิดข้อผิดพลาดในการดึงข้อมูลศิษย์เก่า'
     });
   }
 };
 
 // อัปเดตสถานะการลงทะเบียน (สำหรับ Admin)
-export const updateAlumniStatus = async (req, res) => {
+export const updateAlumniStatusController = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, notes } = req.body;
     
-    const alumni = await Alumni.findById(id);
-    if (!alumni) {
-      return res.status(404).json({
-        success: false,
-        message: 'ไม่พบข้อมูลศิษย์เก่า'
-      });
-    }
-    
-    alumni.status = status;
-    await alumni.save();
-    
-    // ส่งอีเมลแจ้งเตือนการอัปเดตสถานะ
-    await sendStatusUpdateEmail(alumni);
+    // ใช้ service เพื่ออัปเดตสถานะ
+    const alumni = await updateAlumniStatus(id, status, notes, req.user.id);
     
     return res.status(200).json({
       success: true,
@@ -256,9 +157,28 @@ export const updateAlumniStatus = async (req, res) => {
     });
   } catch (error) {
     console.error('Error in updateAlumniStatus:', error);
+    return res.status(error.message.includes('ไม่พบข้อมูล') ? 404 : 500).json({
+      success: false,
+      message: error.message || 'เกิดข้อผิดพลาดในการอัปเดตสถานะ'
+    });
+  }
+};
+
+// ดึงข้อมูลสถิติการลงทะเบียน (สำหรับ Admin)
+export const getStatisticsController = async (req, res) => {
+  try {
+    // ใช้ service เพื่อดึงข้อมูลสถิติ
+    const statistics = await getRegistrationStatistics();
+    
+    return res.status(200).json({
+      success: true,
+      data: statistics
+    });
+  } catch (error) {
+    console.error('Error in getStatistics:', error);
     return res.status(500).json({
       success: false,
-      message: 'เกิดข้อผิดพลาดในการอัปเดตสถานะ',
+      message: 'เกิดข้อผิดพลาดในการดึงข้อมูลสถิติ',
       error: error.message
     });
   }

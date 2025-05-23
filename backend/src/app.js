@@ -5,7 +5,6 @@ import { PORT, CLIENT_URL } from './config/env.js';
 import connectDB from './config/db.js';
 import alumniRoutes from './features/alumni/alumni.routes.js';
 import authRoutes from './features/auth/auth.routes.js';
-import paymentRoutes from './features/payment/payment.routes.js';
 import statusRoutes from './features/status/status.routes.js';
 import { errorHandler, notFound } from './middlewares/error.middleware.js';
 import path from 'path';
@@ -34,7 +33,6 @@ app.use(express.static(path.join(__dirname, '../public')));
 // API Routes
 app.use('/api/alumni', alumniRoutes);
 app.use('/api/auth', authRoutes);
-app.use('/api/payments', paymentRoutes);
 app.use('/api/status', statusRoutes);
 
 // Serve uploaded files

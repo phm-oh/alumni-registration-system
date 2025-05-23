@@ -2,8 +2,8 @@
 import express from 'express';
 import {
   checkStatus,
-  updateStatus,
-  getStatistics,
+  updateStatusController,
+  getStatisticsController,
   searchAlumniRecords
 } from './status.controller.js';
 import { authMiddleware, adminMiddleware } from '../../middlewares/auth.middleware.js';
@@ -14,8 +14,8 @@ const router = express.Router();
 router.post('/check', checkStatus);
 
 // Routes สำหรับ Admin (ต้องยืนยันตัวตนก่อน)
-router.patch('/:id', authMiddleware, adminMiddleware, updateStatus);
-router.get('/statistics', authMiddleware, adminMiddleware, getStatistics);
+router.patch('/:id', authMiddleware, adminMiddleware, updateStatusController);
+router.get('/statistics', authMiddleware, adminMiddleware, getStatisticsController);
 router.get('/search', authMiddleware, adminMiddleware, searchAlumniRecords);
 
 export default router;

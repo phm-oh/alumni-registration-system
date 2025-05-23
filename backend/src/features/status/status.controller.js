@@ -1,8 +1,8 @@
 // src/features/status/status.controller.js
 import {
   checkStatusByIdCard,
-  updateAlumniStatus,
-  getRegistrationStatistics,
+  updateStatus,
+  getStatistics,
   searchAlumni
 } from './status.service.js';
 
@@ -29,13 +29,13 @@ export const checkStatus = async (req, res) => {
 };
 
 // อัปเดตสถานะการลงทะเบียน (สำหรับ Admin)
-export const updateStatus = async (req, res) => {
+export const updateStatusController = async (req, res) => {
   try {
     const { id } = req.params;
     const { status, note } = req.body;
     
     // ใช้ service เพื่ออัปเดตสถานะ
-    const alumni = await updateAlumniStatus(id, status, note, req.user.id);
+    const alumni = await updateStatus(id, status, note, req.user.id);
     
     return res.status(200).json({
       success: true,
@@ -52,10 +52,10 @@ export const updateStatus = async (req, res) => {
 };
 
 // ดึงข้อมูลสถิติการลงทะเบียน (สำหรับ Admin)
-export const getStatistics = async (req, res) => {
+export const getStatisticsController = async (req, res) => {
   try {
     // ใช้ service เพื่อดึงข้อมูลสถิติ
-    const statistics = await getRegistrationStatistics();
+    const statistics = await getStatistics();
     
     return res.status(200).json({
       success: true,
