@@ -1,4 +1,3 @@
-// Authentication controller 
 // src/features/auth/auth.controller.js
 import User from './auth.model.js';
 import jwt from 'jsonwebtoken';
@@ -11,7 +10,92 @@ const generateToken = (id) => {
   });
 };
 
-// ลงทะเบียนผู้ใช้ (Admin)
+// ตรวจสอบว่าระบบมี Admin แล้วหรือยัง
+export const checkAdminExists = async (req, res) => {
+  try {
+    const adminCount = await User.countDocuments({ role: 'admin' });
+    
+    return res.status(200).json({
+      success: true,
+      data: {
+        hasAdmin: adminCount > 0,
+        adminCount
+      }
+    });
+  } catch (error) {
+    console.error('Error in checkAdminExists:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'เกิดข้อผิดพลาดในการตรวจสอบ Admin',
+      error: error.message
+    });
+  }
+};
+
+// สร้าง Admin คนแรก (ไม่ต้องยืนยันตัวตน)
+export const createFirstAdmin = async (req, res) => {
+  try {
+    // ตรวจสอบว่ามี Admin อยู่แล้วหรือไม่
+    const adminCount = await User.countDocuments({ role: 'admin' });
+    if (adminCount > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'ระบบมี Admin อยู่แล้ว กรุณาใช้การลงทะเบียนปกติ'
+      });
+    }
+
+    const { username, email, password } = req.body;
+    
+    // ตรวจสอบข้อมูลที่จำเป็น
+    if (!username || !email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'กรุณากรอกข้อมูลให้ครบถ้วน'
+      });
+    }
+
+    // ตรวจสอบว่ามีผู้ใช้นี้อยู่แล้วหรือไม่
+    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'อีเมลหรือชื่อผู้ใช้นี้ถูกใช้งานแล้ว'
+      });
+    }
+    
+    // สร้าง Admin คนแรก
+    const user = await User.create({
+      username,
+      email,
+      password,
+      role: 'admin'
+    });
+    
+    // สร้าง Token
+    const token = generateToken(user._id);
+    
+    return res.status(201).json({
+      success: true,
+      message: 'สร้าง Admin คนแรกสำเร็จ',
+      token,
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    console.error('Error in createFirstAdmin:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'เกิดข้อผิดพลาดในการสร้าง Admin',
+      error: error.message
+    });
+  }
+};
+
+// ลงทะเบียนผู้ใช้ (Admin/Staff) - ต้องมี Admin อยู่แล้ว
 export const register = async (req, res) => {
   try {
     const { username, email, password, role } = req.body;
@@ -30,7 +114,7 @@ export const register = async (req, res) => {
       username,
       email,
       password,
-      role
+      role: role || 'staff'
     });
     
     // สร้าง Token
@@ -178,6 +262,83 @@ export const getAllUsers = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้',
+      error: error.message
+    });
+  }
+};
+
+// อัปเดตข้อมูลผู้ใช้ (เฉพาะ Admin)
+export const updateUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { username, email, role } = req.body;
+    
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'ไม่พบผู้ใช้นี้ในระบบ'
+      });
+    }
+    
+    // อัปเดตข้อมูล
+    if (username) user.username = username;
+    if (email) user.email = email;
+    if (role) user.role = role;
+    
+    await user.save();
+    
+    return res.status(200).json({
+      success: true,
+      message: 'อัปเดตข้อมูลผู้ใช้สำเร็จ',
+      data: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    console.error('Error in updateUser:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'เกิดข้อผิดพลาดในการอัปเดตข้อมูลผู้ใช้',
+      error: error.message
+    });
+  }
+};
+
+// ลบผู้ใช้ (เฉพาะ Admin)
+export const deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // ไม่สามารถลบตัวเองได้
+    if (id === req.user.id) {
+      return res.status(400).json({
+        success: false,
+        message: 'ไม่สามารถลบบัญชีของตัวเองได้'
+      });
+    }
+    
+    const user = await User.findByIdAndDelete(id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'ไม่พบผู้ใช้นี้ในระบบ'
+      });
+    }
+    
+    return res.status(200).json({
+      success: true,
+      message: 'ลบผู้ใช้สำเร็จ',
+      data: user
+    });
+  } catch (error) {
+    console.error('Error in deleteUser:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'เกิดข้อผิดพลาดในการลบผู้ใช้',
       error: error.message
     });
   }

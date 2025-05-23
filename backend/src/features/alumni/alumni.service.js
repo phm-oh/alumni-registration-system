@@ -6,6 +6,12 @@ import {
   sendStatusUpdateEmail 
 } from '../../utils/email.js';
 import { uploadToCloudinary } from '../../utils/upload.js';
+import {
+  createNewRegistrationNotification,
+  createPaymentUploadedNotification,
+  createStatusUpdatedNotification,
+  createPositionUpdatedNotification
+} from '../notification/notification.service.js';
 
 /**
  * สร้างการลงทะเบียนศิษย์เก่าใหม่
@@ -28,7 +34,8 @@ export const createAlumniRegistration = async (alumniData, paymentProofFile = nu
     firstName, lastName, idCard, address, graduationYear, department,
     phone, email, currentJob, workplace, facebookId, lineId,
     paymentMethod, deliveryOption, pdpaConsent,
-    status: paymentMethod === 'ชำระด้วยตนเอง' ? 'รอการชำระเงิน' : 'รอตรวจสอบ'
+    status: paymentMethod === 'ชำระด้วยตนเอง' ? 'รอการชำระเงิน' : 'รอตรวจสอบ',
+    position: 'สมาชิกสามัญ'  // ตั้งค่าเริ่มต้น
   });
   
   // กำหนดค่าจัดส่งและยอดรวม
@@ -51,6 +58,9 @@ export const createAlumniRegistration = async (alumniData, paymentProofFile = nu
   // ส่งอีเมลแจ้งเตือน
   await sendRegistrationEmail(newAlumni);
   await sendAdminNotificationEmail(newAlumni);
+  
+  // สร้างการแจ้งเตือนในระบบ
+  await createNewRegistrationNotification(newAlumni);
 
   return newAlumni;
 };
@@ -84,6 +94,9 @@ export const uploadPaymentProof = async (idCard, paymentProofFile, paymentDetail
   // ส่งอีเมลแจ้งเตือน Admin
   await sendAdminNotificationEmail(alumni);
   
+  // สร้างการแจ้งเตือนในระบบ
+  await createPaymentUploadedNotification(alumni);
+  
   return alumni;
 };
 
@@ -99,6 +112,7 @@ export const checkRegistrationStatus = async (idCard) => {
   return {
     fullName: `${alumni.firstName} ${alumni.lastName}`,
     status: alumni.status,
+    position: alumni.position,
     registrationDate: alumni.registrationDate,
     paymentMethod: alumni.paymentMethod,
     deliveryOption: alumni.deliveryOption,
@@ -116,6 +130,8 @@ export const updateAlumniStatus = async (id, status, notes, userId) => {
   if (!alumni) {
     throw new Error('ไม่พบข้อมูลศิษย์เก่า');
   }
+  
+  const oldStatus = alumni.status;
   
   // อัปเดตสถานะ
   alumni.status = status;
@@ -137,6 +153,72 @@ export const updateAlumniStatus = async (id, status, notes, userId) => {
   // ส่งอีเมลแจ้งเตือนการอัปเดตสถานะ
   await sendStatusUpdateEmail(alumni);
   
+  // สร้างการแจ้งเตือนในระบบ
+  if (oldStatus !== status) {
+    await createStatusUpdatedNotification(alumni, oldStatus, status);
+  }
+  
+  return alumni;
+};
+
+/**
+ * อัปเดตตำแหน่งสมาชิก (สำหรับ Admin)
+ */
+export const updateAlumniPosition = async (id, position, notes, userId) => {
+  const alumni = await Alumni.findById(id);
+  if (!alumni) {
+    throw new Error('ไม่พบข้อมูลศิษย์เก่า');
+  }
+  
+  const oldPosition = alumni.position;
+  
+  // ตรวจสอบว่าตำแหน่งที่ต้องการเปลี่ยนไปมีคนดำรงอยู่แล้วหรือไม่ (เฉพาะตำแหน่งพิเศษ)
+  if (position !== 'สมาชิกสามัญ') {
+    const existingPosition = await Alumni.findOne({ 
+      position: position,
+      _id: { $ne: id } 
+    });
+    
+    // สำหรับตำแหน่งที่มีได้คนเดียว
+    if (['ประธานชมรมศิษย์เก่า', 'การเงิน', 'ทะเบียน', 'ประชาสัมพันธ์'].includes(position) && existingPosition) {
+      throw new Error(`ตำแหน่ง "${position}" มีผู้ดำรงตำแหน่งอยู่แล้ว`);
+    }
+    
+    // สำหรับรองประธาน (สูงสุด 4 คน)
+    if (position === 'รองประธาน') {
+      const vicePresidentCount = await Alumni.countDocuments({ 
+        position: 'รองประธาน',
+        _id: { $ne: id }
+      });
+      
+      if (vicePresidentCount >= 4) {
+        throw new Error('ตำแหน่งรองประธานมีผู้ดำรงตำแหน่งครบ 4 คนแล้ว');
+      }
+    }
+  }
+  
+  // อัปเดตตำแหน่ง
+  alumni.position = position;
+  
+  // เพิ่มบันทึกประวัติการอัปเดตตำแหน่ง
+  if (!alumni.positionHistory) {
+    alumni.positionHistory = [];
+  }
+  
+  alumni.positionHistory.push({
+    position,
+    notes,
+    updatedBy: userId,
+    updatedAt: new Date()
+  });
+  
+  await alumni.save();
+  
+  // สร้างการแจ้งเตือนในระบบ
+  if (oldPosition !== position) {
+    await createPositionUpdatedNotification(alumni, oldPosition, position);
+  }
+  
   return alumni;
 };
 
@@ -149,6 +231,10 @@ export const getAllAlumni = async (filters = {}, options = {}) => {
   // สร้าง query ตามเงื่อนไขที่ได้รับ
   if (filters.status) {
     query.status = filters.status;
+  }
+  
+  if (filters.position) {
+    query.position = filters.position;
   }
   
   if (filters.graduationYear) {
@@ -180,6 +266,8 @@ export const getAllAlumni = async (filters = {}, options = {}) => {
   
   // ค้นหาข้อมูล
   const alumni = await Alumni.find(query)
+    .populate('statusHistory.updatedBy', 'username')
+    .populate('positionHistory.updatedBy', 'username')
     .sort(sort)
     .skip(skip)
     .limit(limit);
@@ -200,7 +288,10 @@ export const getAllAlumni = async (filters = {}, options = {}) => {
  * ดึงข้อมูลศิษย์เก่าตาม ID
  */
 export const getAlumniById = async (id) => {
-  const alumni = await Alumni.findById(id);
+  const alumni = await Alumni.findById(id)
+    .populate('statusHistory.updatedBy', 'username')
+    .populate('positionHistory.updatedBy', 'username');
+    
   if (!alumni) {
     throw new Error('ไม่พบข้อมูลศิษย์เก่า');
   }
@@ -220,6 +311,19 @@ export const getRegistrationStatistics = async () => {
   const approvedCount = await Alumni.countDocuments({ status: 'อนุมัติแล้ว' });
   const waitingPaymentCount = await Alumni.countDocuments({ status: 'รอการชำระเงิน' });
   const cancelledCount = await Alumni.countDocuments({ status: 'ยกเลิก' });
+  
+  // จำนวนศิษย์เก่าแยกตามตำแหน่ง
+  const positionStats = await Alumni.aggregate([
+    {
+      $group: {
+        _id: '$position',
+        count: { $sum: 1 }
+      }
+    },
+    {
+      $sort: { count: -1 }
+    }
+  ]);
   
   // จำนวนศิษย์เก่าแยกตามปีที่สำเร็จการศึกษา
   const graduationYearStats = await Alumni.aggregate([
@@ -269,6 +373,7 @@ export const getRegistrationStatistics = async () => {
       waitingPayment: waitingPaymentCount,
       cancelled: cancelledCount
     },
+    positionStats,
     graduationYearStats,
     departmentStats,
     paymentStats: paymentStats.length > 0 ? {
@@ -281,12 +386,31 @@ export const getRegistrationStatistics = async () => {
   };
 };
 
+/**
+ * ดึงรายชื่อแผนกวิชาทั้งหมด
+ */
+export const getAllDepartments = async () => {
+  const departments = await Alumni.distinct('department');
+  return departments.sort();
+};
+
+/**
+ * ดึงรายชื่อปีที่สำเร็จการศึกษาทั้งหมด
+ */
+export const getAllGraduationYears = async () => {
+  const years = await Alumni.distinct('graduationYear');
+  return years.sort((a, b) => b - a); // เรียงจากใหม่ไปเก่า
+};
+
 export default {
   createAlumniRegistration,
   uploadPaymentProof,
   checkRegistrationStatus,
   updateAlumniStatus,
+  updateAlumniPosition,
   getAllAlumni,
   getAlumniById,
-  getRegistrationStatistics
+  getRegistrationStatistics,
+  getAllDepartments,
+  getAllGraduationYears
 };

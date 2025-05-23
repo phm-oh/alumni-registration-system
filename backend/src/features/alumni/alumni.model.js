@@ -62,6 +62,20 @@ const alumniSchema = new mongoose.Schema({
     type: String
   },
   
+  // ตำแหน่งในสมาคม
+  position: {
+    type: String,
+    enum: [
+      'สมาชิกสามัญ',
+      'ประธานชมรมศิษย์เก่า',
+      'รองประธาน',
+      'การเงิน',
+      'ทะเบียน',
+      'ประชาสัมพันธ์'
+    ],
+    default: 'สมาชิกสามัญ'
+  },
+  
   // ข้อมูลการสมัครสมาชิก
   registrationDate: {
     type: Date,
@@ -106,7 +120,35 @@ const alumniSchema = new mongoose.Schema({
   pdpaConsent: {
     type: Boolean,
     required: [true, 'กรุณายินยอมให้ใช้ข้อมูลส่วนบุคคล']
-  }
+  },
+  
+  // ประวัติการอัปเดตสถานะ
+  statusHistory: [{
+    status: String,
+    notes: String,
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    updatedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  
+  // ประวัติการอัปเดตตำแหน่ง
+  positionHistory: [{
+    position: String,
+    notes: String,
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    updatedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }]
 }, {
   timestamps: true
 });

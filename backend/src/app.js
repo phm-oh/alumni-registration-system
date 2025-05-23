@@ -6,6 +6,7 @@ import connectDB from './config/db.js';
 import alumniRoutes from './features/alumni/alumni.routes.js';
 import authRoutes from './features/auth/auth.routes.js';
 import statusRoutes from './features/status/status.routes.js';
+import notificationRoutes from './features/notification/notification.routes.js';
 import { errorHandler, notFound } from './middlewares/error.middleware.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -34,6 +35,7 @@ app.use(express.static(path.join(__dirname, '../public')));
 app.use('/api/alumni', alumniRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/status', statusRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));

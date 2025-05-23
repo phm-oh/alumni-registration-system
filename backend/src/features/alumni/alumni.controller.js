@@ -4,9 +4,12 @@ import {
   uploadPaymentProof,
   checkRegistrationStatus,
   updateAlumniStatus,
+  updateAlumniPosition,
   getAllAlumni,
   getAlumniById,
-  getRegistrationStatistics
+  getRegistrationStatistics,
+  getAllDepartments,
+  getAllGraduationYears
 } from './alumni.service.js';
 
 // ลงทะเบียนศิษย์เก่าใหม่
@@ -85,13 +88,14 @@ export const uploadPaymentProofController = async (req, res) => {
 export const getAllAlumniController = async (req, res) => {
   try {
     const { 
-      status, graduationYear, department, name, idCard,
+      status, position, graduationYear, department, name, idCard,
       page, limit, sort 
     } = req.query;
     
     // สร้าง filters และ options
     const filters = {};
     if (status) filters.status = status;
+    if (position) filters.position = position;
     if (graduationYear) filters.graduationYear = parseInt(graduationYear);
     if (department) filters.department = department;
     if (name) filters.name = name;
@@ -164,6 +168,29 @@ export const updateAlumniStatusController = async (req, res) => {
   }
 };
 
+// อัปเดตตำแหน่งสมาชิก (สำหรับ Admin)
+export const updateAlumniPositionController = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { position, notes } = req.body;
+    
+    // ใช้ service เพื่ออัปเดตตำแหน่ง
+    const alumni = await updateAlumniPosition(id, position, notes, req.user.id);
+    
+    return res.status(200).json({
+      success: true,
+      message: 'อัปเดตตำแหน่งสำเร็จ',
+      data: alumni
+    });
+  } catch (error) {
+    console.error('Error in updateAlumniPosition:', error);
+    return res.status(error.message.includes('ไม่พบข้อมูล') ? 404 : 400).json({
+      success: false,
+      message: error.message || 'เกิดข้อผิดพลาดในการอัปเดตตำแหน่ง'
+    });
+  }
+};
+
 // ดึงข้อมูลสถิติการลงทะเบียน (สำหรับ Admin)
 export const getStatisticsController = async (req, res) => {
   try {
@@ -179,6 +206,44 @@ export const getStatisticsController = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'เกิดข้อผิดพลาดในการดึงข้อมูลสถิติ',
+      error: error.message
+    });
+  }
+};
+
+// ดึงรายชื่อแผนกวิชาทั้งหมด
+export const getDepartmentsController = async (req, res) => {
+  try {
+    const departments = await getAllDepartments();
+    
+    return res.status(200).json({
+      success: true,
+      data: departments
+    });
+  } catch (error) {
+    console.error('Error in getDepartments:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'เกิดข้อผิดพลาดในการดึงข้อมูลแผนกวิชา',
+      error: error.message
+    });
+  }
+};
+
+// ดึงรายชื่อปีที่สำเร็จการศึกษาทั้งหมด
+export const getGraduationYearsController = async (req, res) => {
+  try {
+    const years = await getAllGraduationYears();
+    
+    return res.status(200).json({
+      success: true,
+      data: years
+    });
+  } catch (error) {
+    console.error('Error in getGraduationYears:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'เกิดข้อผิดพลาดในการดึงข้อมูลปีที่สำเร็จการศึกษา',
       error: error.message
     });
   }
