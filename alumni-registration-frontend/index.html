@@ -1,13 +1,179 @@
 <!doctype html>
-<html lang="en">
+<html lang="th">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React</title>
+    
+    <!-- SEO Meta Tags -->
+    <title>ระบบลงทะเบียนศิษย์เก่า - วิทยาลัยอาชีวศึกษาอุดรธานี</title>
+    <meta name="description" content="ระบบลงทะเบียนศิษย์เก่าออนไลน์ วิทยาลัยอาชีวศึกษาอุดรธานี สมัครสมาชิกชมรมศิษย์เก่า ตรวจสอบสถานะ อัปโหลดหลักฐานการชำระเงิน" />
+    <meta name="keywords" content="ศิษย์เก่า, อุดรธานี, วิทยาลัยอาชีวศึกษา, สมัครสมาชิก, ชมรม, alumni" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="ระบบลงทะเบียนศิษย์เก่า - วิทยาลัยอาชีวศึกษาอุดรธานี" />
+    <meta property="og:description" content="ระบบลงทะเบียนศิษย์เก่าออนไลน์ วิทยาลัยอาชีวศึกษาอุดรธานี" />
+    <meta property="og:image" content="/og-image.jpg" />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:title" content="ระบบลงทะเบียนศิษย์เก่า - วิทยาลัยอาชีวศึกษาอุดรธานี" />
+    <meta property="twitter:description" content="ระบบลงทะเบียนศิษย์เก่าออนไลน์" />
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800&family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Theme Color -->
+    <meta name="theme-color" content="#2563eb" />
+    <meta name="msapplication-TileColor" content="#2563eb" />
+    
+    <!-- Apple Touch Icon -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    
+    <!-- Preload Critical Resources -->
+    <link rel="dns-prefetch" href="//fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="//fonts.gstatic.com" />
+    
+    <!-- Prevent Flash of Unstyled Content -->
+    <style>
+      /* Critical CSS - Prevent FOUC */
+      html {
+        font-family: 'Sarabun', 'Inter', system-ui, -apple-system, sans-serif;
+        line-height: 1.5;
+        -webkit-text-size-adjust: 100%;
+        -moz-tab-size: 4;
+        tab-size: 4;
+      }
+      
+      body {
+        margin: 0;
+        background-color: #f8fafc;
+        color: #1f2937;
+      }
+      
+      /* Loading Spinner */
+      .loading-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        opacity: 1;
+        transition: opacity 0.3s ease-out;
+      }
+      
+      .loading-container.fade-out {
+        opacity: 0;
+        pointer-events: none;
+      }
+      
+      .loading-spinner {
+        width: 60px;
+        height: 60px;
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        border-left-color: #ffffff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      
+      .loading-text {
+        color: white;
+        font-size: 1.125rem;
+        font-weight: 500;
+        margin-top: 1rem;
+        text-align: center;
+      }
+      
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      
+      /* Hide content until React loads */
+      #root {
+        opacity: 0;
+        transition: opacity 0.3s ease-in;
+      }
+      
+      #root.loaded {
+        opacity: 1;
+      }
+    </style>
   </head>
   <body>
+    <!-- Loading Screen -->
+    <div id="loading" class="loading-container">
+      <div>
+        <div class="loading-spinner"></div>
+        <div class="loading-text">
+          <div>กำลังโหลดระบบ...</div>
+          <div style="font-size: 0.875rem; margin-top: 0.5rem; opacity: 0.8;">
+            วิทยาลัยอาชีวศึกษาอุดรธานี
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- React Root -->
     <div id="root"></div>
+    
+    <!-- Scripts -->
     <script type="module" src="/src/main.jsx"></script>
+    
+    <!-- Remove Loading Screen -->
+    <script>
+      // Remove loading screen when React loads
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          const loading = document.getElementById('loading');
+          const root = document.getElementById('root');
+          
+          if (loading && root) {
+            loading.classList.add('fade-out');
+            root.classList.add('loaded');
+            
+            setTimeout(function() {
+              loading.remove();
+            }, 300);
+          }
+        }, 800); // Show loading for at least 800ms for smooth experience
+      });
+      
+      // Fallback - remove loading after 3 seconds
+      setTimeout(function() {
+        const loading = document.getElementById('loading');
+        if (loading) {
+          loading.remove();
+          document.getElementById('root').classList.add('loaded');
+        }
+      }, 3000);
+    </script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/sw.js')
+            .then(function(registration) {
+              console.log('SW registered: ', registration);
+            })
+            .catch(function(registrationError) {
+              console.log('SW registration failed: ', registrationError);
+            });
+        });
+      }
+    </script>
   </body>
 </html>
