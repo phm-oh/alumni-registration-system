@@ -18,7 +18,15 @@ import { authMiddleware, adminMiddleware } from '../../middlewares/auth.middlewa
 const router = express.Router();
 
 // Routes สำหรับผู้ใช้ทั่วไป
-router.post('/register', upload.single('paymentProof'), registerAlumni);
+//router.post('/register', upload.single('paymentProof'), registerAlumni);
+router.post('/register', upload.fields([
+  { name: 'profileImage', maxCount: 1 },
+  { name: 'paymentProof', maxCount: 1 }
+]), registerAlumni);
+
+
+
+
 router.post('/check-status', checkRegistrationStatusController);
 router.post('/upload-payment', upload.single('paymentProof'), uploadPaymentProofController);
 

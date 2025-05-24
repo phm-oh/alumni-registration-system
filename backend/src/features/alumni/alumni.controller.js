@@ -16,7 +16,7 @@ import {
 export const registerAlumni = async (req, res) => {
   try {
     // ใช้ service เพื่อสร้างการลงทะเบียน
-    const newAlumni = await createAlumniRegistration(req.body, req.file);
+    const newAlumni = await createAlumniRegistration(req.body, req.files);
 
     return res.status(201).json({
       success: true,

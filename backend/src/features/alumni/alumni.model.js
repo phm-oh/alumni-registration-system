@@ -92,6 +92,9 @@ const alumniSchema = new mongoose.Schema({
   paymentDetails: {
     type: String
   },
+  profileImageUrl: {
+  type: String
+ },
   paymentProofUrl: {
     type: String
   },

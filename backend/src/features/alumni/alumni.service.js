@@ -13,10 +13,15 @@ import {
   createPositionUpdatedNotification
 } from '../notification/notification.service.js';
 
+
 /**
  * สร้างการลงทะเบียนศิษย์เก่าใหม่
  */
-export const createAlumniRegistration = async (alumniData, paymentProofFile = null) => {
+export const createAlumniRegistration = async (alumniData, files = {}) => {
+  // แยกไฟล์ออกมา
+  const profileImageFile = files.profileImage ? files.profileImage[0] : null;
+  const paymentProofFile = files.paymentProof ? files.paymentProof[0] : null;
+
   const {
     firstName, lastName, idCard, address, graduationYear, department,
     phone, email, currentJob, workplace, facebookId, lineId,
@@ -42,6 +47,12 @@ export const createAlumniRegistration = async (alumniData, paymentProofFile = nu
   if (deliveryOption === 'จัดส่งทางไปรษณีย์') {
     newAlumni.shippingFee = 30;
     newAlumni.totalAmount = 230;
+  }
+
+  // อัปโหลดรูปประจำตัว (ใหม่)
+  if (profileImageFile) {
+    const profileResult = await uploadToCloudinary(profileImageFile);
+    newAlumni.profileImageUrl = profileResult.secure_url;
   }
 
   // ถ้ามีการอัปโหลดไฟล์หลักฐานการชำระเงิน
