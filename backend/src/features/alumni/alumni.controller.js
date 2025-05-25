@@ -1,4 +1,4 @@
-// src/features/alumni/alumni.controller.js
+// src/features/alumni/alumni.controller.js - Fixed Search Parameter
 import {
   createAlumniRegistration,
   uploadPaymentProof,
@@ -84,13 +84,16 @@ export const uploadPaymentProofController = async (req, res) => {
   }
 };
 
-// ดึงข้อมูลศิษย์เก่าทั้งหมด (สำหรับ Admin)
+// ดึงข้อมูลศิษย์เก่าทั้งหมด (สำหรับ Admin) - Fixed Search Parameters
 export const getAllAlumniController = async (req, res) => {
   try {
     const { 
-      status, position, graduationYear, department, name, idCard,
+      status, position, graduationYear, department, 
+      search, name, idCard, // รองรับทั้ง search และ name
       page, limit, sort 
     } = req.query;
+    
+    console.log('Search params received:', { search, name, idCard }); // Debug log
     
     // สร้าง filters และ options
     const filters = {};
@@ -98,8 +101,18 @@ export const getAllAlumniController = async (req, res) => {
     if (position) filters.position = position;
     if (graduationYear) filters.graduationYear = parseInt(graduationYear);
     if (department) filters.department = department;
-    if (name) filters.name = name;
-    if (idCard) filters.idCard = idCard;
+    
+    // แก้ไข: รองรับทั้ง search และ name parameter
+    const searchTerm = search || name;
+    if (searchTerm && searchTerm.trim()) {
+      filters.name = searchTerm.trim();
+    }
+    
+    if (idCard && idCard.trim()) {
+      filters.idCard = idCard.trim();
+    }
+    
+    console.log('Filters applied:', filters); // Debug log
     
     const options = {
       page: page ? parseInt(page) : 1,
@@ -109,6 +122,8 @@ export const getAllAlumniController = async (req, res) => {
     
     // ใช้ service เพื่อดึงข้อมูล
     const results = await getAllAlumni(filters, options);
+    
+    console.log('Search results:', { total: results.total, count: results.data.length }); // Debug log
     
     return res.status(200).json({
       success: true,

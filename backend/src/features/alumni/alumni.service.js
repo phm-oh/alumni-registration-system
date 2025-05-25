@@ -1,4 +1,4 @@
-// src/features/alumni/alumni.service.js
+// src/features/alumni/alumni.service.js - Fixed Statistics Status Mapping
 import Alumni from './alumni.model.js';
 import { 
   sendRegistrationEmail, 
@@ -12,7 +12,6 @@ import {
   createStatusUpdatedNotification,
   createPositionUpdatedNotification
 } from '../notification/notification.service.js';
-
 
 /**
  * สร้างการลงทะเบียนศิษย์เก่าใหม่
@@ -40,7 +39,7 @@ export const createAlumniRegistration = async (alumniData, files = {}) => {
     phone, email, currentJob, workplace, facebookId, lineId,
     paymentMethod, deliveryOption, pdpaConsent,
     status: paymentMethod === 'ชำระด้วยตนเอง' ? 'รอการชำระเงิน' : 'รอตรวจสอบ',
-    position: 'สมาชิกสามัญ'  // ตั้งค่าเริ่มต้น
+    position: 'สมาชิกสามัญ'
   });
   
   // กำหนดค่าจัดส่งและยอดรวม
@@ -49,7 +48,7 @@ export const createAlumniRegistration = async (alumniData, files = {}) => {
     newAlumni.totalAmount = 230;
   }
 
-  // อัปโหลดรูปประจำตัว (ใหม่)
+  // อัปโหลดรูปประจำตัว
   if (profileImageFile) {
     const profileResult = await uploadToCloudinary(profileImageFile);
     newAlumni.profileImageUrl = profileResult.secure_url;
@@ -66,12 +65,30 @@ export const createAlumniRegistration = async (alumniData, files = {}) => {
   // บันทึกข้อมูล
   await newAlumni.save();
   
+  console.log('✅ New alumni registered:', newAlumni._id, newAlumni.firstName, newAlumni.lastName);
+  
   // ส่งอีเมลแจ้งเตือน
-  await sendRegistrationEmail(newAlumni);
-  await sendAdminNotificationEmail(newAlumni);
+  try {
+    await sendRegistrationEmail(newAlumni);
+    console.log('✅ Registration email sent');
+  } catch (error) {
+    console.error('❌ Failed to send registration email:', error);
+  }
+  
+  try {
+    await sendAdminNotificationEmail(newAlumni);
+    console.log('✅ Admin notification email sent');
+  } catch (error) {
+    console.error('❌ Failed to send admin notification email:', error);
+  }
   
   // สร้างการแจ้งเตือนในระบบ
-  await createNewRegistrationNotification(newAlumni);
+  try {
+    await createNewRegistrationNotification(newAlumni);
+    console.log('✅ System notification created for admins');
+  } catch (error) {
+    console.error('❌ Failed to create system notification:', error);
+  }
 
   return newAlumni;
 };
@@ -121,7 +138,10 @@ export const checkRegistrationStatus = async (idCard) => {
   }
   
   return {
-    fullName: `${alumni.firstName} ${alumni.lastName}`,
+    firstName: alumni.firstName,
+    lastName: alumni.lastName,
+    department: alumni.department,
+    graduationYear: alumni.graduationYear,
     status: alumni.status,
     position: alumni.position,
     registrationDate: alumni.registrationDate,
@@ -183,7 +203,7 @@ export const updateAlumniPosition = async (id, position, notes, userId) => {
   
   const oldPosition = alumni.position;
   
-  // ตรวจสอบว่าตำแหน่งที่ต้องการเปลี่ยนไปมีคนดำรงอยู่แล้วหรือไม่ (เฉพาะตำแหน่งพิเศษ)
+  // ตรวจสอบว่าตำแหน่งที่ต้องการเปลี่ยนไปมีคนดำรงอยู่แล้วหรือไม่
   if (position !== 'สมาชิกสามัญ') {
     const existingPosition = await Alumni.findOne({ 
       position: position,
@@ -191,7 +211,7 @@ export const updateAlumniPosition = async (id, position, notes, userId) => {
     });
     
     // สำหรับตำแหน่งที่มีได้คนเดียว
-    if (['ประธานชมรมศิษย์เก่า', 'การเงิน', 'ทะเบียน', 'ประชาสัมพันธ์'].includes(position) && existingPosition) {
+    if (['ประธาน', 'การเงิน', 'ทะเบียน', 'ประชาสัมพันธ์'].includes(position) && existingPosition) {
       throw new Error(`ตำแหน่ง "${position}" มีผู้ดำรงตำแหน่งอยู่แล้ว`);
     }
     
@@ -267,6 +287,8 @@ export const getAllAlumni = async (filters = {}, options = {}) => {
     query.idCard = { $regex: filters.idCard, $options: 'i' };
   }
   
+  console.log('Search query:', query); // Debug log
+  
   // กำหนดการเรียงลำดับ
   const sort = options.sort || { createdAt: -1 };
   
@@ -285,6 +307,8 @@ export const getAllAlumni = async (filters = {}, options = {}) => {
   
   // นับจำนวนทั้งหมด
   const total = await Alumni.countDocuments(query);
+  
+  console.log(`Found ${alumni.length} alumni out of ${total} total`); // Debug log
   
   return {
     data: alumni,
@@ -311,17 +335,49 @@ export const getAlumniById = async (id) => {
 };
 
 /**
- * ดึงข้อมูลสถิติการลงทะเบียน
+ * ดึงข้อมูลสถิติการลงทะเบียน - แก้ไข Status Mapping
  */
 export const getRegistrationStatistics = async () => {
+  console.log('🔍 Calculating registration statistics...');
+  
   // จำนวนศิษย์เก่าทั้งหมด
   const totalAlumni = await Alumni.countDocuments();
+  console.log(`Total alumni: ${totalAlumni}`);
   
-  // จำนวนศิษย์เก่าแยกตามสถานะ
-  const pendingCount = await Alumni.countDocuments({ status: 'รอตรวจสอบ' });
-  const approvedCount = await Alumni.countDocuments({ status: 'อนุมัติแล้ว' });
-  const waitingPaymentCount = await Alumni.countDocuments({ status: 'รอการชำระเงิน' });
-  const cancelledCount = await Alumni.countDocuments({ status: 'ยกเลิก' });
+  // ดึงข้อมูล status ทั้งหมดเพื่อ debug
+  const allStatuses = await Alumni.distinct('status');
+  console.log('All statuses in database:', allStatuses);
+  
+  // จำนวนศิษย์เก่าแยกตามสถานะ - แก้ไข mapping ให้ตรงกับข้อมูลจริง
+  const statusCounts = await Alumni.aggregate([
+    {
+      $group: {
+        _id: '$status',
+        count: { $sum: 1 }
+      }
+    }
+  ]);
+  
+  console.log('Status counts from database:', statusCounts);
+  
+  // แปลงข้อมูลให้ตรงกับที่ frontend ต้องการ
+  const statusMap = {};
+  statusCounts.forEach(item => {
+    statusMap[item._id] = item.count;
+  });
+  
+  // Map status ให้ตรงกับที่ใช้ใน frontend
+  const pendingCount = (statusMap['รอตรวจสอบ'] || 0);
+  const approvedCount = (statusMap['อนุมัติ'] || 0) + (statusMap['อนุมัติแล้ว'] || 0); // รวมทั้ง 2 แบบ
+  const waitingPaymentCount = (statusMap['รอการชำระเงิน'] || 0);
+  const rejectedCount = (statusMap['ปฏิเสธ'] || 0) + (statusMap['ยกเลิก'] || 0); // รวมทั้ง 2 แบบ
+  
+  console.log('Mapped status counts:', {
+    pending: pendingCount,
+    approved: approvedCount,
+    waitingPayment: waitingPaymentCount,
+    rejected: rejectedCount
+  });
   
   // จำนวนศิษย์เก่าแยกตามตำแหน่ง
   const positionStats = await Alumni.aggregate([
@@ -365,7 +421,12 @@ export const getRegistrationStatistics = async () => {
   // รายได้ทั้งหมด (จากศิษย์เก่าที่อนุมัติแล้ว)
   const paymentStats = await Alumni.aggregate([
     {
-      $match: { status: 'อนุมัติแล้ว' }
+      $match: { 
+        $or: [
+          { status: 'อนุมัติ' },
+          { status: 'อนุมัติแล้ว' }
+        ]
+      }
     },
     {
       $group: {
@@ -376,13 +437,13 @@ export const getRegistrationStatistics = async () => {
     }
   ]);
   
-  return {
+  const finalStats = {
     totalAlumni,
     statusStats: {
       pending: pendingCount,
       approved: approvedCount,
       waitingPayment: waitingPaymentCount,
-      cancelled: cancelledCount
+      cancelled: rejectedCount // ใช้ cancelled แทน rejected ตามที่ frontend ต้องการ
     },
     positionStats,
     graduationYearStats,
@@ -395,6 +456,10 @@ export const getRegistrationStatistics = async () => {
       count: 0
     }
   };
+  
+  console.log('✅ Final statistics:', finalStats);
+  
+  return finalStats;
 };
 
 /**
