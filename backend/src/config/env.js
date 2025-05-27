@@ -14,3 +14,5 @@ export const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "alumni2@it.udvc.ac.th";
 export const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || "djnhoz1vm";
 export const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY || "695137725626495";
 export const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET || "0AdwqZLvqn7y57c7M-bhR_1CKHQ";
+
+export const FRONTEND_URL = process.env.FRONTEND_URL || 'https://fontend-alumni.onrender.com';

@@ -2,8 +2,11 @@
 import nodemailer from 'nodemailer';
 import { EMAIL_USER, EMAIL_PASS, ADMIN_EMAIL } from '../config/env.js';
 
+// Frontend URL
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://fontend-alumni.onrender.com';
+
 // สร้าง transporter สำหรับส่งอีเมล
-const transporter = nodemailer.createTransport({
+const transporter = nodemailer.createTransporter({
   service: 'gmail',
   auth: {
     user: EMAIL_USER,
@@ -41,7 +44,7 @@ export const sendRegistrationEmail = async (alumni) => {
             <p style="margin: 0;"><strong>สถานะการลงทะเบียน:</strong> ${alumni.status}</p>
           </div>
           <p>เจ้าหน้าที่จะตรวจสอบข้อมูลและหลักฐานการชำระเงินของท่าน และจะส่งอีเมลยืนยันการเป็นสมาชิกให้ท่านในภายหลัง</p>
-          <p><strong>*** ขอบัตรสมาชิกสำหรับสมาชิกจะจัดส่งไปตามที่อยู่ที่ท่านแจ้งไว้ภายใน 7 วันทำการหลังจากได้รับการอนุมัติ ***</strong></p>
+          <p><strong>*** บัตรสมาชิกสำหรับสมาชิกจะจัดส่งไปตามที่อยู่ที่ท่านแจ้งไว้ภายใน 7 วันทำการหลังจากได้รับการอนุมัติ ***</strong></p>
           <p>หากมีข้อสงสัยประการใด กรุณาติดต่อ <a href="mailto:alumni@gsuite.udvc.ac.th">alumni@gsuite.udvc.ac.th</a></p>
           <p>ขอแสดงความนับถือ,<br>สมาคมศิษย์เก่า</p>
         </div>
@@ -80,8 +83,8 @@ export const sendAdminNotificationEmail = async (alumni) => {
               <li><strong>จำนวนเงินทั้งหมด:</strong> ${alumni.totalAmount} บาท</li>
             </ul>
           </div>
-          <p><a href="http://localhost:5500/admin/alumni/${alumni._id}" style="background-color: #4CAF50; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px; display: inline-block;">ตรวจสอบข้อมูลในระบบ</a></p>
-          <p><a href="https://alumni-registration-system-1.onrender.com/admin/alumni/${alumni._id}" style="background-color: #4CAF50; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px; display: inline-block;">ตรวจสอบข้อมูลในระบบ</a></p>
+          <p><a href="${FRONTEND_URL || 'https://fontend-alumni.onrender.com'}/admin" style="background-color: #4CAF50; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px; display: inline-block; margin-right: 10px;">🔧 เข้าระบบ Admin</a></p>
+          <p><a href="${FRONTEND_URL || 'https://fontend-alumni.onrender.com'}/?idCard=${alumni.idCard}" style="background-color: #2196F3; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px; display: inline-block;">👀 ดูข้อมูลผู้สมัคร</a></p>
         </div>
       `
     };
@@ -114,12 +117,12 @@ export const sendStatusUpdateEmail = async (alumni) => {
             <p style="margin: 0; font-size: 18px;"><strong>สถานะปัจจุบัน:</strong> ${alumni.status}</p>
           </div>
           ${alumni.status === 'อนุมัติแล้ว' ? `
-          <p>ขอแสดงความยินดี! ท่านได้เป็นสมาชิกศิษย์เก่าอย่างเป็นทางการแล้ว</p>
+          <p>🎉 ขอแสดงความยินดี! ท่านได้เป็นสมาชิกศิษย์เก่าอย่างเป็นทางการแล้ว</p>
           <p><strong>การจัดส่งบัตรสมาชิก:</strong> ${alumni.deliveryOption === 'จัดส่งทางไปรษณีย์' ? 'บัตรสมาชิกจะถูกจัดส่งไปยังที่อยู่ที่ท่านให้ไว้ภายใน 7 วันทำการ' : 'ท่านสามารถมารับบัตรสมาชิกได้ที่สำนักงานสมาคมศิษย์เก่า ในวันและเวลาทำการ'}</p>
           ` : ''}
           ${alumni.status === 'รอการชำระเงิน' ? `
           <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
-            <h3 style="margin-top: 0;">ข้อมูลการชำระเงิน:</h3>
+            <h3 style="margin-top: 0;">💰 ข้อมูลการชำระเงิน:</h3>
             <p><strong>จำนวนเงิน:</strong> ${alumni.totalAmount} บาท</p>
             <p><strong>ธนาคาร:</strong> ธนาคารกรุงไทย</p>
             <p><strong>เลขที่บัญชี:</strong> 443-3-40313-5</p>
@@ -128,7 +131,9 @@ export const sendStatusUpdateEmail = async (alumni) => {
             <p>หลังจากชำระเงินเรียบร้อยแล้ว กรุณาอัปโหลดหลักฐานการชำระเงินในระบบ หรือส่งมาที่อีเมล alumni@gsuite.udvc.ac.th</p>
           </div>
           ` : ''}
-          <p>ท่านสามารถตรวจสอบสถานะการลงทะเบียนได้ที่: <a href="http://localhost:5500/check_status.html">ตรวจสอบสถานะ</a></p>
+          <div style="text-align: center; margin: 20px 0;">
+            <a href="${FRONTEND_URL || 'https://alumni-registration-system-1.onrender.com'}/?idCard=${alumni.idCard}" style="background-color: #4CAF50; color: white; padding: 12px 20px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">🔍 ตรวจสอบสถานะการลงทะเบียน</a>
+          </div>
           <p>หากมีข้อสงสัยประการใด กรุณาติดต่อ <a href="mailto:alumni@gsuite.udvc.ac.th">alumni@gsuite.udvc.ac.th</a></p>
           <p>ขอแสดงความนับถือ,<br>สมาคมศิษย์เก่า</p>
         </div>
