@@ -83,8 +83,8 @@ export const sendAdminNotificationEmail = async (alumni) => {
               <li><strong>จำนวนเงินทั้งหมด:</strong> ${alumni.totalAmount} บาท</li>
             </ul>
           </div>
-          <p><a href="${FRONTEND_URL || 'https://fontend-alumni.onrender.com'}/admin" style="background-color: #4CAF50; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px; display: inline-block; margin-right: 10px;">🔧 เข้าระบบ Admin</a></p>
-          <p><a href="${FRONTEND_URL || 'https://fontend-alumni.onrender.com'}/?idCard=${alumni.idCard}" style="background-color: #2196F3; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px; display: inline-block;">👀 ดูข้อมูลผู้สมัคร</a></p>
+          <p><a href="${FRONTEND_URL || 'https://fontend-alumni.onrender.com'}" style="background-color: #4CAF50; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px; display: inline-block; margin-right: 10px;">🔧 เข้าระบบ Admin</a></p>
+          
         </div>
       `
     };
