@@ -6,7 +6,7 @@ import { EMAIL_USER, EMAIL_PASS, ADMIN_EMAIL } from '../config/env.js';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://fontend-alumni.onrender.com';
 
 // สร้าง transporter สำหรับส่งอีเมล
-const transporter = nodemailer.createTransporter({
+const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: EMAIL_USER,
