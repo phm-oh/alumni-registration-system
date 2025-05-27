@@ -17,6 +17,14 @@ export default defineConfig({
     host: true, // Allow external connections
     open: true, // Open browser automatically
     cors: true,
+
+    hmr: {
+    protocol: 'ws', // บางทีอาจต้องเปลี่ยนเป็น 'wss' ถ้าใช้ HTTPS
+    host: 'localhost', 
+    port: 5173
+  },
+
+
     // Proxy API requests to backend
     proxy: {
       '/api': {

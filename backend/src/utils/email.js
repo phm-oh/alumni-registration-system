@@ -81,6 +81,7 @@ export const sendAdminNotificationEmail = async (alumni) => {
             </ul>
           </div>
           <p><a href="http://localhost:5500/admin/alumni/${alumni._id}" style="background-color: #4CAF50; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px; display: inline-block;">ตรวจสอบข้อมูลในระบบ</a></p>
+          <p><a href="https://alumni-registration-system-1.onrender.com/admin/alumni/${alumni._id}" style="background-color: #4CAF50; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px; display: inline-block;">ตรวจสอบข้อมูลในระบบ</a></p>
         </div>
       `
     };
