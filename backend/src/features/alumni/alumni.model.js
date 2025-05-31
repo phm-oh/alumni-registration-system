@@ -234,9 +234,10 @@ alumniSchema.pre('save', function(next) {
 alumniSchema.methods.updateShippingStatus = function(newStatus, trackingNumber, notes, userId) {
   this.shippingStatus = newStatus;
   
-  if (trackingNumber) {
-    this.trackingNumber = trackingNumber;
-  }
+  if (trackingNumber !== undefined && trackingNumber !== null) {
+  const trimmedTracking = String(trackingNumber).trim();
+  this.trackingNumber = trimmedTracking; // เก็บแม้จะเป็น empty string
+}
   
   if (newStatus === 'จัดส่งแล้ว') {
     this.shippedDate = new Date();
