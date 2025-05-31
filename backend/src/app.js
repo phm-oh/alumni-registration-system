@@ -103,7 +103,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// 🚀 เพิ่ม API overview endpoint
+// 🚀 เพิ่ม API overview endpoint.
 app.get('/api/overview', (req, res) => {
   res.status(200).json({
     success: true,
