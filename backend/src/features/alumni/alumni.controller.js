@@ -1,4 +1,6 @@
-// src/features/alumni/alumni.controller.js - Fixed Search Parameter
+// Path: src/features/alumni/alumni.controller.js
+// ไฟล์: alumni.controller.js - อัปเดตเพื่อรองรับระบบการจัดส่ง
+
 import {
   createAlumniRegistration,
   uploadPaymentProof,
@@ -11,6 +13,15 @@ import {
   getAllDepartments,
   getAllGraduationYears
 } from './alumni.service.js';
+
+// 🚀 Import shipping services
+import {
+  getShippingList,
+  updateShippingStatus,
+  bulkUpdateShipping,
+  getShippingStatistics,
+  trackShipment
+} from './shipping.service.js';
 
 // ลงทะเบียนศิษย์เก่าใหม่
 export const registerAlumni = async (req, res) => {
@@ -84,16 +95,17 @@ export const uploadPaymentProofController = async (req, res) => {
   }
 };
 
-// ดึงข้อมูลศิษย์เก่าทั้งหมด (สำหรับ Admin) - Fixed Search Parameters
+// ดึงข้อมูลศิษย์เก่าทั้งหมด (สำหรับ Admin) 🚀 เพิ่มการกรอง shipping
 export const getAllAlumniController = async (req, res) => {
   try {
     const { 
       status, position, graduationYear, department, 
-      search, name, idCard, // รองรับทั้ง search และ name
+      search, name, idCard,
+      shippingStatus, deliveryOption, // 🚀 เพิ่มใหม่
       page, limit, sort 
     } = req.query;
     
-    console.log('Search params received:', { search, name, idCard }); // Debug log
+    console.log('Search params received:', { search, name, idCard, shippingStatus, deliveryOption });
     
     // สร้าง filters และ options
     const filters = {};
@@ -101,6 +113,10 @@ export const getAllAlumniController = async (req, res) => {
     if (position) filters.position = position;
     if (graduationYear) filters.graduationYear = parseInt(graduationYear);
     if (department) filters.department = department;
+    
+    // 🚀 เพิ่มการกรอง shipping
+    if (shippingStatus) filters.shippingStatus = shippingStatus;
+    if (deliveryOption) filters.deliveryOption = deliveryOption;
     
     // แก้ไข: รองรับทั้ง search และ name parameter
     const searchTerm = search || name;
@@ -112,7 +128,7 @@ export const getAllAlumniController = async (req, res) => {
       filters.idCard = idCard.trim();
     }
     
-    console.log('Filters applied:', filters); // Debug log
+    console.log('Filters applied:', filters);
     
     const options = {
       page: page ? parseInt(page) : 1,
@@ -123,7 +139,7 @@ export const getAllAlumniController = async (req, res) => {
     // ใช้ service เพื่อดึงข้อมูล
     const results = await getAllAlumni(filters, options);
     
-    console.log('Search results:', { total: results.total, count: results.data.length }); // Debug log
+    console.log('Search results:', { total: results.total, count: results.data.length });
     
     return res.status(200).json({
       success: true,
@@ -260,6 +276,170 @@ export const getGraduationYearsController = async (req, res) => {
       success: false,
       message: 'เกิดข้อผิดพลาดในการดึงข้อมูลปีที่สำเร็จการศึกษา',
       error: error.message
+    });
+  }
+};
+
+// 🚀 === SHIPPING CONTROLLERS === 🚀
+
+// ดึงรายชื่อศิษย์เก่าที่ต้องจัดส่ง
+export const getShippingListController = async (req, res) => {
+  try {
+    const { 
+      shippingStatus = 'รอการจัดส่ง',
+      graduationYear, 
+      department, 
+      search,
+      page, 
+      limit, 
+      sort 
+    } = req.query;
+    
+    const filters = {
+      shippingStatus,
+      graduationYear: graduationYear ? parseInt(graduationYear) : undefined,
+      department,
+      search
+    };
+    
+    const options = {
+      page: page ? parseInt(page) : 1,
+      limit: limit ? parseInt(limit) : 20,
+      sort: sort ? JSON.parse(sort) : { createdAt: -1 }
+    };
+    
+    const results = await getShippingList(filters, options);
+    
+    return res.status(200).json({
+      success: true,
+      message: 'ดึงรายชื่อการจัดส่งสำเร็จ',
+      ...results
+    });
+  } catch (error) {
+    console.error('Error in getShippingList:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'เกิดข้อผิดพลาดในการดึงรายชื่อการจัดส่ง',
+      error: error.message
+    });
+  }
+};
+
+// อัปเดตสถานะการจัดส่ง
+export const updateShippingStatusController = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { shippingStatus, trackingNumber, notes, shippedDate } = req.body;
+    
+    if (!shippingStatus) {
+      return res.status(400).json({
+        success: false,
+        message: 'กรุณาระบุสถานะการจัดส่ง'
+      });
+    }
+    
+    const shippingData = {
+      shippingStatus,
+      trackingNumber,
+      notes,
+      shippedDate
+    };
+    
+    const alumni = await updateShippingStatus(id, shippingData, req.user.id);
+    
+    return res.status(200).json({
+      success: true,
+      message: 'อัปเดตสถานะการจัดส่งสำเร็จ',
+      data: {
+        id: alumni._id,
+        fullName: alumni.fullName,
+        shippingStatus: alumni.shippingStatus,
+        trackingNumber: alumni.trackingNumber,
+        shippedDate: alumni.shippedDate,
+        deliveryNotes: alumni.deliveryNotes
+      }
+    });
+  } catch (error) {
+    console.error('Error in updateShippingStatus:', error);
+    return res.status(error.message.includes('ไม่พบข้อมูล') ? 404 : 400).json({
+      success: false,
+      message: error.message || 'เกิดข้อผิดพลาดในการอัปเดตสถานะการจัดส่ง'
+    });
+  }
+};
+
+// จัดส่งแบบกลุ่ม
+export const bulkUpdateShippingController = async (req, res) => {
+  try {
+    const { alumniIds, shippingStatus, notes } = req.body;
+    
+    if (!alumniIds || !Array.isArray(alumniIds) || alumniIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'กรุณาเลือกรายชื่อที่ต้องการจัดส่ง'
+      });
+    }
+    
+    if (!shippingStatus) {
+      return res.status(400).json({
+        success: false,
+        message: 'กรุณาระบุสถานะการจัดส่ง'
+      });
+    }
+    
+    const shippingData = { shippingStatus, notes };
+    const results = await bulkUpdateShipping(alumniIds, shippingData, req.user.id);
+    
+    return res.status(200).json({
+      success: true,
+      message: `อัปเดตสถานะการจัดส่งสำเร็จ ${results.updated} รายการ`,
+      data: results
+    });
+  } catch (error) {
+    console.error('Error in bulkUpdateShipping:', error);
+    return res.status(400).json({
+      success: false,
+      message: error.message || 'เกิดข้อผิดพลาดในการจัดส่งแบบกลุ่ม'
+    });
+  }
+};
+
+// ดึงสถิติการจัดส่ง
+export const getShippingStatisticsController = async (req, res) => {
+  try {
+    const statistics = await getShippingStatistics();
+    
+    return res.status(200).json({
+      success: true,
+      data: statistics
+    });
+  } catch (error) {
+    console.error('Error in getShippingStatistics:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'เกิดข้อผิดพลาดในการดึงสถิติการจัดส่ง',
+      error: error.message
+    });
+  }
+};
+
+// ค้นหาด้วยเลขติดตาม
+export const trackShipmentController = async (req, res) => {
+  try {
+    const { trackingNumber } = req.params;
+    
+    const result = await trackShipment(trackingNumber);
+    
+    return res.status(200).json({
+      success: true,
+      message: 'ค้นหาการจัดส่งสำเร็จ',
+      data: result
+    });
+  } catch (error) {
+    console.error('Error in trackShipment:', error);
+    return res.status(error.message.includes('ไม่พบข้อมูล') ? 404 : 500).json({
+      success: false,
+      message: error.message || 'เกิดข้อผิดพลาดในการค้นหาการจัดส่ง'
     });
   }
 };

@@ -1,4 +1,6 @@
-// src/features/alumni/alumni.model.js
+// Path: src/features/alumni/alumni.model.js
+// ไฟล์: alumni.model.js - เพิ่ม Shipping Status และ Fields ใหม่
+
 import mongoose from 'mongoose';
 
 const alumniSchema = new mongoose.Schema({
@@ -72,7 +74,6 @@ const alumniSchema = new mongoose.Schema({
       'เลขานุการ',
       'กรรมการ',
       'สมาชิกกิตติมศักดิ์',
-      
     ],
     default: 'สมาชิกสามัญ'
   },
@@ -94,8 +95,8 @@ const alumniSchema = new mongoose.Schema({
     type: String
   },
   profileImageUrl: {
-  type: String
- },
+    type: String
+  },
   paymentProofUrl: {
     type: String
   },
@@ -116,11 +117,39 @@ const alumniSchema = new mongoose.Schema({
     type: Number,
     default: 200
   },
+  
+  // 🚀 สถานะการอนุมัติ (แยกจากการจัดส่ง)
   status: {
     type: String,
     enum: ['รอตรวจสอบ', 'อนุมัติ', 'รอการชำระเงิน', 'ปฏิเสธ'],
     default: 'รอตรวจสอบ'
   },
+  
+  // 🚀 สถานะการจัดส่งใหม่ (แยกต่างหาก)
+  shippingStatus: {
+    type: String,
+    enum: ['ไม่ต้องจัดส่ง', 'รอการจัดส่ง', 'กำลังจัดส่ง', 'จัดส่งแล้ว'],
+    default: function() {
+      return this.deliveryOption === 'รับที่วิทยาลัย' ? 'ไม่ต้องจัดส่ง' : 'รอการจัดส่ง';
+    }
+  },
+  
+  // 🚀 ข้อมูลการจัดส่งเพิ่มเติม
+  shippedDate: {
+    type: Date
+  },
+  trackingNumber: {
+    type: String,
+    trim: true
+  },
+  shippedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'  // ผู้ดำเนินการจัดส่ง
+  },
+  deliveryNotes: {
+    type: String  // หมายเหตุการจัดส่ง
+  },
+  
   pdpaConsent: {
     type: Boolean,
     required: [true, 'กรุณายินยอมให้ใช้ข้อมูลส่วนบุคคล']
@@ -152,6 +181,21 @@ const alumniSchema = new mongoose.Schema({
       type: Date,
       default: Date.now
     }
+  }],
+  
+  // 🚀 ประวัติการจัดส่ง
+  shippingHistory: [{
+    shippingStatus: String,
+    trackingNumber: String,
+    notes: String,
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    updatedAt: {
+      type: Date,
+      default: Date.now
+    }
   }]
 }, {
   timestamps: true
@@ -162,17 +206,67 @@ alumniSchema.virtual('fullName').get(function() {
   return `${this.firstName} ${this.lastName}`;
 });
 
-// ก่อนบันทึกข้อมูล ให้คำนวณค่าใช้จ่ายทั้งหมด
+// 🚀 ก่อนบันทึกข้อมูล ให้คำนวณค่าใช้จ่ายและ shippingStatus
 alumniSchema.pre('save', function(next) {
+  // คำนวณค่าจัดส่ง
   if (this.deliveryOption === 'จัดส่งทางไปรษณีย์') {
     this.shippingFee = 30;
     this.totalAmount = this.amount + this.shippingFee;
+    
+    // ถ้าเป็นคนใหม่ ตั้งสถานะการจัดส่ง
+    if (this.isNew && !this.shippingStatus) {
+      this.shippingStatus = 'รอการจัดส่ง';
+    }
   } else {
     this.shippingFee = 0;
     this.totalAmount = this.amount;
+    
+    // ถ้าเป็นคนรับเอง ไม่ต้องจัดส่ง
+    if (this.isNew && !this.shippingStatus) {
+      this.shippingStatus = 'ไม่ต้องจัดส่ง';
+    }
   }
+  
   next();
 });
+
+// 🚀 Method สำหรับอัปเดตสถานะการจัดส่ง
+alumniSchema.methods.updateShippingStatus = function(newStatus, trackingNumber, notes, userId) {
+  this.shippingStatus = newStatus;
+  
+  if (trackingNumber) {
+    this.trackingNumber = trackingNumber;
+  }
+  
+  if (newStatus === 'จัดส่งแล้ว') {
+    this.shippedDate = new Date();
+    this.shippedBy = userId;
+  }
+  
+  // บันทึกประวัติการจัดส่ง
+  if (!this.shippingHistory) {
+    this.shippingHistory = [];
+  }
+  
+  this.shippingHistory.push({
+    shippingStatus: newStatus,
+    trackingNumber: trackingNumber,
+    notes: notes,
+    updatedBy: userId,
+    updatedAt: new Date()
+  });
+  
+  if (notes) {
+    this.deliveryNotes = notes;
+  }
+};
+
+// 🚀 Method ตรวจสอบว่าพร้อมจัดส่งหรือไม่
+alumniSchema.methods.isReadyToShip = function() {
+  return this.status === 'อนุมัติ' && 
+         this.deliveryOption === 'จัดส่งทางไปรษณีย์' && 
+         this.shippingStatus === 'รอการจัดส่ง';
+};
 
 const Alumni = mongoose.model('Alumni', alumniSchema);
 

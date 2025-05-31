@@ -1,4 +1,6 @@
-// src/app.js
+// Path: src/app.js (แก้ไขเฉพาะส่วน routes)
+// เพิ่มการ import shipping routes ใหม่
+
 import express from 'express';
 import cors from 'cors';
 import { PORT, CLIENT_URL } from './config/env.js';
@@ -7,6 +9,7 @@ import alumniRoutes from './features/alumni/alumni.routes.js';
 import authRoutes from './features/auth/auth.routes.js';
 import statusRoutes from './features/status/status.routes.js';
 import notificationRoutes from './features/notification/notification.routes.js';
+import shippingRoutes from './features/alumni/shipping.routes.js'; // 🚀 ต้องมีบรรทัดนี้
 import { errorHandler, notFound } from './middlewares/error.middleware.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -36,6 +39,7 @@ app.use('/api/alumni', alumniRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/status', statusRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/shipping', shippingRoutes); // 🚀 ต้องมีบรรทัดนี้
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
@@ -44,8 +48,18 @@ app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     success: true,
-    message: 'API is running',
-    timestamp: new Date()
+    message: 'Alumni Registration System API is running',
+    timestamp: new Date(),
+    features: [
+      'Alumni Registration',
+      'Payment Management', 
+      'Status Tracking',
+      'Notifications',
+      'Shipping Management', // 🚀 เพิ่มใหม่
+      'Label Generation',     // 🚀 เพิ่มใหม่
+      'Minimal Labels',       // 🚀 เพิ่มใหม่
+      '4-Up Labels'          // 🚀 เพิ่มใหม่
+    ]
   });
 });
 
@@ -68,5 +82,18 @@ app.use(errorHandler);
 
 // Start server
 app.listen(PORT || 5500, () => {
-  console.log(`Server is running on port ${PORT || 5500}`);
+  console.log(`🚀 Alumni Registration System Server is running on port ${PORT || 5500}`);
+  console.log(`📋 Available APIs:`);
+  console.log(`   • Alumni Management: /api/alumni`);
+  console.log(`   • Authentication: /api/auth`);
+  console.log(`   • Status Tracking: /api/status`);
+  console.log(`   • Notifications: /api/notifications`);
+  console.log(`   • 🚀 Shipping Management: /api/shipping`);
+  console.log(`   • 🏷️ Label Generation: /api/shipping/labels/*`);
+  console.log(`   • Health Check: /api/health`);
+  console.log(`📦 Shipping Label APIs:`);
+  console.log(`   • Minimal Label: GET /api/shipping/labels/minimal/:id`);
+  console.log(`   • 4-Up Labels: POST /api/shipping/labels/4up`);
+  console.log(`   • Full Label: GET /api/shipping/labels/single/:id`);
+  console.log(`   • Bulk Labels: POST /api/shipping/labels/bulk`);
 });

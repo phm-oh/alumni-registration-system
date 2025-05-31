@@ -1,4 +1,6 @@
-// src/features/notification/notification.controller.js
+// Path: src/features/notification/notification.controller.js
+// ไฟล์: notification.controller.js - คืนค่ากลับมาเป็นไฟล์เดิม
+
 import {
   getNotificationsForUser,
   getUnreadCount,

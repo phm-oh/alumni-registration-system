@@ -1,4 +1,6 @@
-// src/features/notification/notification.model.js
+// Path: src/features/notification/notification.model.js
+// ไฟล์: notification.model.js - อัปเดตเพื่อเพิ่ม shipping notification types
+
 import mongoose from 'mongoose';
 
 const notificationSchema = new mongoose.Schema({
@@ -17,6 +19,12 @@ const notificationSchema = new mongoose.Schema({
       'payment_uploaded',     // อัปโหลดหลักฐานการชำระเงิน
       'status_updated',       // อัปเดตสถานะ
       'position_updated',     // อัปเดตตำแหน่ง
+      'shipping_updated',     // 🚀 อัปเดตสถานะการจัดส่ง
+      'bulk_shipping',        // 🚀 จัดส่งแบบกลุ่ม
+      'label_printed',        // 🚀 พิมพ์ label การจัดส่ง
+      'tracking_inquiry',     // 🚀 มีการติดตามพัสดุ
+      'urgent_shipping',      // 🚀 การจัดส่งค้างนาน
+      'weekly_summary',       // 🚀 สรุปการจัดส่งรายสัปดาห์
       'system'               // ระบบ
     ],
     required: [true, 'กรุณาระบุประเภทการแจ้งเตือน']
