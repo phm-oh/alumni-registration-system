@@ -68,7 +68,7 @@ export const sendAdminNotificationEmail = async (alumni) => {
   try {
     const mailOptions = {
       from: EMAIL_USER,
-      to: ADMIN_EMAIL,
+      to: [ADMIN_EMAIL , "alumni3@it.udvc.ac.th"],
       subject: '[แจ้งเตือนระบบ] มีการลงทะเบียนศิษย์เก่าใหม่',
       html: `
         <div style="font-family: 'Prompt', sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px;">
