@@ -17,8 +17,8 @@ RUN addgroup -g 1001 -S nodejs && \
 # Copy package files first (for better caching)
 COPY package*.json ./
 
-# Install dependencies with legacy peer deps
-RUN npm ci --only=production --omit=dev && npm cache clean --force
+# Install dependencies 
+RUN npm ci && npm cache clean --force
 
 # Copy source code
 COPY . .
