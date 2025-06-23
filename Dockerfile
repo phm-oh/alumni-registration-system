@@ -22,14 +22,14 @@ RUN mkdir -p uploads logs
 
 # Set environment variables
 ENV NODE_ENV=production
-ENV PORT=5000
+ENV PORT=5500
 
 # Expose port
-EXPOSE 5000
+EXPOSE 5500
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:5000/api/health || exit 1
+    CMD curl -f http://localhost:5500/api/health || exit 1
 
 # Start the application
 CMD ["node", "src/app.js"]
