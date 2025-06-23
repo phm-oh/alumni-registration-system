@@ -92,7 +92,7 @@ jobs:
             echo "🔧 Deploying Alumni Backend..."
             
             # Navigate to deployment directory
-            cd /opt/alumni-deploy || exit 1
+            cd /home/oem/alumni-deploy || exit 1
             
             # Login to GHCR
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
@@ -103,13 +103,13 @@ jobs:
             
             # Restart backend container
             echo "🔄 Restarting backend container..."
-            docker-compose pull alumni-backend
-            docker-compose up -d alumni-backend
+            docker-compose -f docker-compose.prod.yml pull alumni-backend
+            docker-compose -f docker-compose.prod.yml up -d alumni-backend
             
-            # Health check
+            # Health check (แก้เป็น port 5500)
             echo "🩺 Checking backend health..."
             sleep 30
-            if curl -f http://localhost:5000/api/health; then
+            if curl -f http://localhost:5500/api/health; then
               echo "✅ Backend deployment successful!"
             else
               echo "❌ Backend health check failed!"
